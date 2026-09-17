@@ -19,6 +19,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Compress, decompress, and render a checkpoint.")
     parser.add_argument("--config", required=True)
+    parser.add_argument("--source-path", help="Override data.source_path in the config.")
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--save-images", action="store_true",
@@ -95,6 +96,8 @@ def main(model_class=CompressedGaussianModel, config_loader=load_config):
     if not torch.cuda.is_available():
         raise RuntimeError("The Scaffold rasterizer requires CUDA.")
     cfg = config_loader(args.config)
+    if args.source_path is not None:
+        cfg.data.source_path = args.source_path
     model = model_class(cfg.model).cuda()
     data = SimpleNamespace(**vars(cfg.data))
     data.model_path = args.output

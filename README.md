@@ -98,7 +98,8 @@ Compress and evaluate a trained checkpoint:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 python -m scaffold_codec_int.compress_and_evaluate \
-  --config outputs/mipnerf360_30k_int/bicycle_lmb0.0006/config.yaml \
+  --config config/codec30k_mipnerf360.yaml \
+  --source-path datasets/mipnerf360/bicycle \
   --checkpoint outputs/mipnerf360_30k_int/bicycle_lmb0.0006/checkpoints/final.pt \
   --output outputs/mipnerf360_30k_int/bicycle_lmb0.0006/eval \
   --save-images
@@ -108,7 +109,8 @@ To decode and evaluate an integer bitstream:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 python -m scaffold_codec_int.decompress_and_evaluate \
-  --config outputs/mipnerf360_30k_int/bicycle_lmb0.0006/config.yaml \
+  --config config/codec30k_mipnerf360.yaml \
+  --source-path datasets/mipnerf360/bicycle \
   --bitstream outputs/mipnerf360_30k_int/bicycle_lmb0.0006/scene.bin \
   --output outputs/mipnerf360_30k_int/bicycle_lmb0.0006/decoded_eval \
   --save-images

@@ -14,6 +14,7 @@ from .model import CompressedGaussianModel
 def parse_args():
     parser = argparse.ArgumentParser(description="Decode an integer scene bitstream and evaluate test views.")
     parser.add_argument("--config", required=True)
+    parser.add_argument("--source-path", help="Override data.source_path in the config.")
     parser.add_argument("--bitstream", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--save-images", action="store_true", help="Save render/target PNG files.")
@@ -28,6 +29,8 @@ def main():
     if not torch.cuda.is_available():
         raise RuntimeError("The Scaffold rasterizer requires CUDA.")
     cfg = load_config(args.config)
+    if args.source_path is not None:
+        cfg.data.source_path = args.source_path
     bitstream = Path(args.bitstream).read_bytes()
     model = CompressedGaussianModel(cfg.model).cuda()
     attrs = model.decompress(bitstream)
