@@ -1,0 +1,17 @@
+# include "config/codec45k_mipnerf360.yaml"
+
+model:
+  offset_mask_threshold: 0.5
+
+train:
+  iterations: 20000
+  # Match the 20K point of each 45K exponential schedule:
+  # lr_final_20k = lr_init * (lr_final_45k / lr_init) ** (20000 / 45000)
+  offset_lr_final: 0.0023916263490008044
+  codec_lr_final: 0.0006654842383978486
+  anchor_latent_lr_final: 0.009055842968854535
+  offset_mask_lr_final: 0.0012226064240488444
+  coding_scale_lr_final: 0.0035938136638046275
+  mlp_opacity_lr_final: 0.00007187627327609255
+  mlp_color_lr_final: 0.00020788704320686522
+  offset_mask_prune_iterations: [17000]

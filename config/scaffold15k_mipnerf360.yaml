@@ -1,0 +1,58 @@
+data:
+  root: datasets/mipnerf360
+  scene: bicycle
+  output_root: outputs/scaffold15k_mipnerf360
+  model_path: null
+  images: images
+  resolution: -1
+  data_device: cuda
+  eval: true
+  lod: 0
+  white_background: false
+
+model:
+  anchor_feat_channels: 32
+  n_offsets: 10
+  physical_voxel_size: 0.001
+  anchor_grid_size: 0.002
+  grow_physical_size_factors: [16, 4, 1]
+  grow_grid_size_factors: [8, 2, 1]
+  grow_threshold_factors: [1, 2, 4]
+  use_feat_bank: false
+  appearance_dim: 0
+  point_ratio: 1
+  add_opacity_dist: true
+  add_cov_dist: true
+  add_color_dist: false
+
+train:
+  iterations: 15000
+  seed: 0
+  lambda_dssim: 0.2
+  scaling_regularization: 0.01
+  position_lr_init: 0.0
+  position_lr_final: 0.0
+  offset_lr_init: 0.01
+  offset_lr_final: 0.001
+  feat_lr: 0.0075
+  opacity_lr: 0.02
+  scaling_lr: 0.007
+  rotation_lr: 0.002
+  mlp_opacity_lr_init: 0.002
+  mlp_opacity_lr_final: 0.0002
+  mlp_cov_lr_init: 0.004
+  mlp_cov_lr_final: 0.004
+  mlp_color_lr_init: 0.008
+  mlp_color_lr_final: 0.00065
+  appearance_lr_init: 0.05
+  appearance_lr_final: 0.005
+  percent_dense: 0.01
+  start_stat: 500
+  update_from: 1500
+  update_interval: 100
+  update_until: 15000
+  min_opacity: 0.005
+  success_threshold: 0.8
+  densify_grad_threshold: 0.0002
+  log_interval: 500
+  test_iterations: [15000]

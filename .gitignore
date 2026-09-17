@@ -1,0 +1,12 @@
+.idea/
+.vscode/
+__pycache__/
+build/
+.DS_Store
+*.zip
+
+/bin
+/datasets
+/local_dev
+/outputs
+/AGENTS.md

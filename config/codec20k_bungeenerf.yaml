@@ -1,0 +1,11 @@
+# include "config/codec20k_mipnerf360.yaml"
+
+data:
+  source_path: datasets/bungeenerf/amsterdam
+  scaffold_model: outputs/scaffold15k_bungeenerf/amsterdam/point_cloud/iteration_15000
+  model_path: outputs/amsterdam_scaffold_codec
+  lod: 30
+
+model:
+  physical_voxel_size: 0.0
+  anchor_grid_size: 0.0

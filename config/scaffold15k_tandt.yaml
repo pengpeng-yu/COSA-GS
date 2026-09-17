@@ -1,0 +1,9 @@
+# include "config/scaffold15k_mipnerf360.yaml"
+data:
+  root: datasets/tandt
+  scene: train
+  output_root: outputs/scaffold15k_tandt
+
+model:
+  physical_voxel_size: 0.01
+  anchor_grid_size: 0.01

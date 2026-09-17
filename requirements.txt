@@ -1,0 +1,14 @@
+ninja
+numpy
+einops
+scipy
+PyYAML
+openpyxl
+matplotlib
+Pillow
+plyfile
+colorama
+opencv-python
+lpips
+torch
+torchvision
