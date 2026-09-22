@@ -7,3 +7,4 @@ plyfile
 colorama
 opencv-python
 lpips
+tqdm

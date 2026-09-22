@@ -211,10 +211,12 @@ class CompressedGaussianModel(FloatModel):
 
         context = self.integer_coord_context(modules, self.anchor_coords)
         channels = []
+        latent_symbols = {}
         for stage, stream in enumerate(latent_streams):
             mean, index = self.integer_latent_distribution(modules, context, channels, stage)
             start = time.perf_counter()
             symbols = coder.decode(stream, index)
+            latent_symbols[f"anchor_latent_symbols_{stage}"] = symbols
             channels.append(reconstruct_fixed(mean, symbols, *steps["anchor_latent"]))
             self.codec_times["entropy_decode_seconds"] += time.perf_counter() - start
         latent = torch.cat(channels, 1)
@@ -222,8 +224,8 @@ class CompressedGaussianModel(FloatModel):
         context = self.integer_fuse_latent(modules, context, latent)
         mean, index = modules["position_scaling_entropy"](context).chunk(2, 1)
         start = time.perf_counter()
-        symbols = coder.decode(position_stream, index)
-        position = reconstruct_fixed(mean, symbols, *steps["position_scaling"])
+        position_symbols = coder.decode(position_stream, index)
+        position = reconstruct_fixed(mean, position_symbols, *steps["position_scaling"])
         self.codec_times["entropy_decode_seconds"] += time.perf_counter() - start
 
         offset_mean, offset_index, scaling_mean, scaling_index = \
@@ -231,10 +233,10 @@ class CompressedGaussianModel(FloatModel):
 
         mask_cdf, mask_stream = mask_stream
         start = time.perf_counter()
-        mask_symbols = torch.from_numpy(
-            self.decode_offset_mask(mask_stream, mask_cdf, context.shape[0])).to(device=context.device, dtype=torch.int64)
+        mask_symbols = torch.from_numpy(self.decode_offset_mask(mask_stream, mask_cdf, context.shape[0]))
+        mask_values = mask_symbols.to(device=context.device, dtype=torch.int64)
         shifts = torch.arange(self.cfg.n_offsets - 1, -1, -1, dtype=torch.int64, device=context.device)
-        mask = ((mask_symbols[:, None] >> shifts) & 1).bool()
+        mask = ((mask_values[:, None] >> shifts) & 1).bool()
         self.codec_times["entropy_decode_seconds"] += time.perf_counter() - start
 
         active = mask[:, :, None].expand_as(offset_mean)
@@ -252,7 +254,9 @@ class CompressedGaussianModel(FloatModel):
         feat_symbols = coder.decode(feat_stream, feat_index)
         self.codec_times["entropy_decode_seconds"] += time.perf_counter() - start
 
-        return {"anchor_latents": latent, "log_position_scaling": position,
+        return {**latent_symbols, "position_scaling_symbols": position_symbols,
+                "offset_mask_symbols": mask_symbols,
+                "anchor_latents": latent, "log_position_scaling": position,
                 "offset_mean": offset_mean, "offset_symbols": offset_symbols,
                 "scaling_mean": scaling_mean, "scaling_symbols": scaling_symbols,
                 "feat_mean": feat_mean, "feat_symbols": feat_symbols,
@@ -338,7 +342,10 @@ class CompressedGaussianModel(FloatModel):
         self.offset_mask_logits.requires_grad_(False)
         self.initialize_anchor_buffers()
         self.eval()
-        result = self.raw_attrs()
+        result = dict(zip(("anchor_feat", "offset", "log_position_scaling", "log_gaussian_scaling"),
+                          self.raw_attrs()))
+        result["anchor_coords"] = self.anchor_coords
+        result.update((name, value) for name, value in decoded.items() if "symbols" in name)
         if device.type == "cuda":
             torch.cuda.synchronize(device)
         self.codec_times["decompress_seconds"] = time.perf_counter() - start

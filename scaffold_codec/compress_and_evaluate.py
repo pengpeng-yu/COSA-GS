@@ -116,7 +116,8 @@ def main(model_class=CompressedGaussianModel, config_loader=load_config):
     torch.cuda.empty_cache()
 
     model = model_class(cfg.model).cuda()
-    attrs = model.decompress(bitstream)
+    model.decompress(bitstream)
+    attrs = model.raw_attrs()
     codec_times.update(model.codec_times)
     model.eval()
     cameras = scene.getTestCameras()

@@ -10,3 +10,4 @@ build/
 /local_dev
 /outputs
 /AGENTS.md
+*.egg-info/
