@@ -116,9 +116,10 @@ CUDA_VISIBLE_DEVICES=0 python -m scaffold_codec_int.decompress_and_evaluate \
   --save-images
 ```
 
-Decoding runs one warmup by default (`--warmup 0` disables it). Warmup results
+Both evaluation scripts run one warmup by default (`--warmup 0` disables it).
+The checkpoint evaluation repeats encoding, decoding, and evaluation. Warmup results
 are saved under `warmup_1/`, etc.; the final results are saved directly to `--output`.
-Decoded symbols, integer anchor coordinates, and reconstructed attributes are
+For bitstream-only evaluation, decoded symbols, integer anchor coordinates, and reconstructed attributes are
 saved as NumPy arrays in each result directory's `cross_platform_check/`.
 
 ## Acknowledgements

@@ -46,7 +46,7 @@ def main():
         output = Path(args.output)
         if run < args.warmup:
             output = output / f"warmup_{run + 1}"
-        decoded = model.decompress(bitstream)
+        decompressed = model.decompress(bitstream)
         model.eval()
 
         if run == 0:
@@ -56,7 +56,7 @@ def main():
         output.mkdir(parents=True, exist_ok=True)
         check_output = output / "cross_platform_check"
         check_output.mkdir(exist_ok=True)
-        for name, value in decoded.items():
+        for name, value in decompressed.items():
             if isinstance(value, torch.Tensor):
                 value = value.detach().cpu().numpy()
             if isinstance(value, np.ndarray):
@@ -75,10 +75,10 @@ def main():
             path = output / filename
             if not args.overwrite:
                 backup_existing_output(path)
-            path.write_text(json.dumps({"decoded": values}, indent=2), encoding="utf-8")
+            path.write_text(json.dumps({"decompressed": values}, indent=2), encoding="utf-8")
         print(output, flush=True)
-        print(json.dumps({"decoded": results}, indent=2), flush=True)
-        del decoded
+        print(json.dumps({"decompressed": results}, indent=2), flush=True)
+        del decompressed
 
 
 if __name__ == "__main__":

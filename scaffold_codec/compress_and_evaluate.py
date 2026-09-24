@@ -22,11 +22,16 @@ def parse_args():
     parser.add_argument("--source-path", help="Override data.source_path in the config.")
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--warmup", type=int, default=1,
+                        help="Number of warmup encode-decode evaluations saved to warmup_N/ (default: 1).")
     parser.add_argument("--save-images", action="store_true",
                         help="Save render/target PNG files.")
     parser.add_argument("--overwrite", action="store_true",
                         help="Overwrite existing bitstream and result JSON files without backups.")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.warmup < 0:
+        parser.error("--warmup must be nonnegative")
+    return args
 
 
 def backup_existing_output(path):
@@ -92,7 +97,6 @@ def evaluate_views(model, attrs, cameras, white_background, output, save_images=
 def main(model_class=CompressedGaussianModel, config_loader=load_config):
     args = parse_args()
     output = Path(args.output)
-    stream_path = output / "scene.bin"
     if not torch.cuda.is_available():
         raise RuntimeError("The Scaffold rasterizer requires CUDA.")
     cfg = config_loader(args.config)
@@ -106,41 +110,59 @@ def main(model_class=CompressedGaussianModel, config_loader=load_config):
     checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     model.restore_model_state(checkpoint)
     model.eval()
-    output.mkdir(parents=True, exist_ok=True)
-    bitstream = model.compress()
-    codec_times = model.codec_times
-    if not args.overwrite:
-        backup_existing_output(stream_path)
-    stream_path.write_bytes(bitstream)
-    del model
-    torch.cuda.empty_cache()
-
-    model = model_class(cfg.model).cuda()
-    model.decompress(bitstream)
-    attrs = model.raw_attrs()
-    codec_times.update(model.codec_times)
-    model.eval()
     cameras = scene.getTestCameras()
-    metrics, per_view = evaluate_views(
-        model, attrs, cameras, cfg.data.white_background, output,
-        save_images=args.save_images)
-
-    results = {
-        **metrics,
-        "actual_total_bytes": len(bitstream),
-        "actual_total_MB": len(bitstream) / 1_000_000.0,
-        "actual_total_MiB": len(bitstream) / (2 << 19),
-        "anchors": int(model.anchor.shape[0]),
-        **codec_times,
-    }
     key = f"ours_{checkpoint['iteration']}"
-    if checkpoint.get("train_seconds") is not None:
-        results["train_seconds"] = checkpoint["train_seconds"]
-    for filename, metrics in (("results.json", results), ("per_view.json", per_view)):
-        path = output / filename
+    train_seconds = checkpoint.get("train_seconds")
+    previous_results_path = output / "results.json"
+    if train_seconds is None and previous_results_path.exists():
+        previous_results = json.loads(previous_results_path.read_text(encoding="utf-8"))
+        train_seconds = previous_results.get(key, {}).get("train_seconds")
+    del checkpoint
+    coded_parameters = tuple(parameter for _, parameter in model.coded_model_parameters())
+    coded_parameter_state = tuple(parameter.clone() for parameter in coded_parameters)
+
+    for run in range(args.warmup + 1):
+        output = Path(args.output)
+        if run < args.warmup:
+            output = output / f"warmup_{run + 1}"
+        output.mkdir(parents=True, exist_ok=True)
+        bitstream = model.compress()
+        codec_times = dict(model.codec_times)
+        stream_path = output / "scene.bin"
         if not args.overwrite:
-            backup_existing_output(path)
-        path.write_text(json.dumps({key: metrics}, indent=2), encoding="utf-8")
+            backup_existing_output(stream_path)
+        stream_path.write_bytes(bitstream)
+
+        decompressed_model = model_class(cfg.model).cuda()
+        decompressed_model.decompress(bitstream)
+        codec_times.update(decompressed_model.codec_times)
+        # Floating-point compression quantizes network parameters in place.
+        for parameter, value in zip(coded_parameters, coded_parameter_state):
+            parameter.copy_(value)
+        decompressed_model.eval()
+        attrs = decompressed_model.raw_attrs()
+        metrics, per_view = evaluate_views(
+            decompressed_model, attrs, cameras, cfg.data.white_background, output,
+            save_images=args.save_images)
+
+        results = {
+            **metrics,
+            "actual_total_bytes": len(bitstream),
+            "actual_total_MB": len(bitstream) / 1_000_000.0,
+            "actual_total_MiB": len(bitstream) / (2 << 19),
+            "anchors": int(decompressed_model.anchor.shape[0]),
+            **codec_times,
+        }
+        if train_seconds is not None:
+            results["train_seconds"] = train_seconds
+        for filename, values in (("results.json", results), ("per_view.json", per_view)):
+            path = output / filename
+            if not args.overwrite:
+                backup_existing_output(path)
+            path.write_text(json.dumps({key: values}, indent=2), encoding="utf-8")
+        print(output, flush=True)
+        print(json.dumps({key: results}, indent=2), flush=True)
+        del attrs, decompressed_model
 
 
 if __name__ == "__main__":
