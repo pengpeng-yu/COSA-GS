@@ -94,8 +94,9 @@ def evaluate_views(model, attrs, cameras, white_background, output, save_images=
 
 
 @torch.no_grad()
-def main(model_class=CompressedGaussianModel, config_loader=load_config):
-    args = parse_args()
+def main(model_class=CompressedGaussianModel, config_loader=load_config, args=None):
+    if args is None:
+        args = parse_args()
     output = Path(args.output)
     if not torch.cuda.is_available():
         raise RuntimeError("The Scaffold rasterizer requires CUDA.")
